@@ -2,8 +2,8 @@ package controller
 
 import (
 	"fmt"
-	"github.com/softputer/kuber-controller/provider"
 	"github.com/softputer/kuber-controller/config"
+	"github.com/softputer/kuber-controller/provider"
 )
 
 type LBController interface {

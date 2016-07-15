@@ -6,34 +6,34 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"github.com/Sirupsen/logrus"	
-	"k8s.io/kubernetes/pkg/client/restclient"
 	"io/ioutil"
-	"k8s.io/kubernetes/pkg/controller/framework"
-	"k8s.io/kubernetes/pkg/client/cache"
-	client	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/client/record"
+	"k8s.io/kubernetes/pkg/client/restclient"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/controller/framework"
 
-	"github.com/softputer/kube-controller/provider"
 	"github.com/softputer/kube-controller/config"
 	"github.com/softputer/kube-controller/controller"
+	"github.com/softputer/kube-controller/provider"
 	utils "github.com/softputer/kube-controller/utils"
 )
 
 var (
-	flags		= pflag.NewFlagSet("", pflag.ExitError)
-	resyncPeriod 	= flags.Duration("sync-period", 30*time.Second,
+	flags        = pflag.NewFlagSet("", pflag.ExitError)
+	resyncPeriod = flags.Duration("sync-period", 30*time.Second,
 		`Relist and confirm cloud resources this often.`)
 )
 
-func getSslData(path string) []byte{
-        b, err := ioutil.ReadFile(path)
-        if err != nil{
-                log.Fatalf("", err)
-        }
-        return b
+func getSslData(path string) []byte {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatalf("", err)
+	}
+	return b
 }
 
 func init() {
@@ -42,23 +42,23 @@ func init() {
 		logrus.Info("KUBERNETES_URL is not set, skipping init of kubernetes contrller.")
 		return
 	}
-	config := &restclient.Config {
-		Host:		server,
-		ContentConfig:  restclient.ContentConfig{GroupVersion: &unversioned.GroupVersion{Version: "v1"}},
+	config := &restclient.Config{
+		Host:          server,
+		ContentConfig: restclient.ContentConfig{GroupVersion: &unversioned.GroupVersion{Version: "v1"}},
 	}
 
 	if certdata := os.Getenv("CERT_DATA"); len(certdata) != 0 {
-                config.CertData = getSslData(certdata)
-        }
-        if keydata := os.Getenv("KEY_DATA"); len(keydata) != 0 {
-                config.CertData = getSslData(keydata)
-        }
-        if cadata := os.Getenv("CA_DATA"); len(cadata) != 0 {
-                config.CertData = getSslData(keydata)
-        }
+		config.CertData = getSslData(certdata)
+	}
+	if keydata := os.Getenv("KEY_DATA"); len(keydata) != 0 {
+		config.CertData = getSslData(keydata)
+	}
+	if cadata := os.Getenv("CA_DATA"); len(cadata) != 0 {
+		config.CertData = getSslData(keydata)
+	}
 
 	kubeClient, err := client.New(config)
-	
+
 	if err != nil {
 		logrus.Fatal("failed to create kubernetes client: %v", err)
 	}
@@ -71,30 +71,30 @@ func init() {
 }
 
 type loadBalancerController struct {
-	client		*client.Client
-	svcController	*framework.Controller
-	svcLister	cache.StoreToServiceLister
-	recorder	record.EventRecorder
-	syncQueue	*utils.TaskQueue
-	stopLock	sync.Mutex
-	shutdowm	bool
-	stopCh		chan struct{}
-	lbProvider	provider.LBProvider
+	client        *client.Client
+	svcController *framework.Controller
+	svcLister     cache.StoreToServiceLister
+	recorder      record.EventRecorder
+	syncQueue     *utils.TaskQueue
+	stopLock      sync.Mutex
+	shutdowm      bool
+	stopCh        chan struct{}
+	lbProvider    provider.LBProvider
 }
 
 func newLoadBalancerController(kubeClient *client.Client, resyncPeriod time.Duration, namespace string) (*loadBalancerController, error) {
-	eventBroadcaster := record.NewBroadcaster()	
+	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(logrus.Infof)
-	eventBroadcaster.StartRecordingToSink(kubeClient.Events(""))	
-	lbc := loadBalancerController() {
-		client:		kubeClient,
-		stopChan:	make(chan struct{}),
-		recorder:	eventBroadcaster.NewRecorder(api.EventSource{Component: "loadbalancer-controller"})
+	eventBroadcaster.StartRecordingToSink(kubeClient.Events(""))
+	lbc := loadBalancerController{
+		client:   kubeClient,
+		stopChan: make(chan struct{}),
+		recorder: eventBroadcaster.NewRecorder(api.EventSource{Component: "loadbalancer-controller"}),
 	}
-	
+
 	lbc.sycQueue = utils.NewTaskQueue(lbc.sync)
-	
- 	svcEventHandler := framework.ResourceEventHandlerFuncs {
+
+	svcEventHandler := framework.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			lbc.syncQueue.Enqueue(obj)
 		},
@@ -105,16 +105,16 @@ func newLoadBalancerController(kubeClient *client.Client, resyncPeriod time.Dura
 			if !reflect.DeepEqual(old, cur) {
 				lbc.syncQueue.Enqueue(cur)
 			}
-		}
+		},
 	}
-	
+
 	lbc.svcLister.Store, lbc.svcController = framework.NewInformer(
 		&cache.ListWatch{
 			ListFunc:  serviceListFunc(lbc.client, namespace),
 			WatchFunc: serviceWatchFunc(lbc.client, namespace),
 		},
 		&api.Service{}, resyncPeriod, framework.ResourceEventHandlerFuncs{})
-	return &lbc, nil	
+	return &lbc, nil
 }
 
 func serviceListFunc(c *client.Client, ns string) func(api.ListOptions) (runtime.Object, error) {
@@ -138,15 +138,15 @@ func (lbc *loadBalancerController) sync(key string) {
 		lbc.syncQueue.Requeue(key, fmt.Errorf("defering sync till endpoits controller has synced"))
 		return
 	}
-	
+
 	requeue := false
 	for _, cfg := range lbc.GetLBConfigs() {
 		if err := lbc.lbProvider.ApplyConfig(cfg); err != nil {
-			logrus.Errorf("Failed to apply lb config on provider: %v". err)
+			logrus.Errorf("Failed to apply lb config on provider: %v".err)
 			requeue = true
 		}
 	}
-	
+
 	if requeue {
 		lbc.syncQueue.Requeue(key, fmt.Errorf("retrying sync as one of the configs failed to apply on a backend"))
 	}
@@ -165,7 +165,7 @@ func (lbc *loadBalancerController) Run(provider provider.LBProvider) {
 }
 
 func (lbc *loadBalancerController) GetLBConfigs() []*config.LoadBalancerConfig {
-	
+
 	return lbConfigs
 }
 
@@ -181,10 +181,10 @@ func (lbc *loadBalancerController) Stop() error {
 		logrus.Infof("shutting down controller queues")
 		lbc.shutdown = true
 		lbc.syncQueue.Shutdown()
-		
+
 		return nil
 	}
-	
+
 	return fmt.Errorf("shutdown already in progress")
 }
 
