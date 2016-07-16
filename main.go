@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/softputer/kube-controller/controller"
-	"github.com/softputer/kube-controller/provider"
+	"github.com/softputer/kuber-controller/controller"
+	"github.com/softputer/kuber-controller/provider"
 	"os"
 	"os/signal"
 	"syscall"	
@@ -31,7 +31,28 @@ func setEnv() {
 }
 
 func main() {
+	logrus.Infof("Starting Kube LB Service")
+	setEnv()
+	logrus.Infof("LB controller: %s", lbc.GetName())
+	logrus.Infof("LB provider: %s", lbp.GetName())
 	
+	go handleSigterm(lbc, lbp)
+
+	lbc.Run(lbp)	
 }
 
+func handleSigterm(lbc controller.LBController, lbp provider.LBProvider) {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGTERM)
+	<-signalChan
+	logrus.Info("Received SIGTERM, shutting down")
 
+	exitCode := 0
+	
+	if err := lbc.Stop(); err != nil {
+		logrus.Infof("Error during shutdown %v", err)
+		exitCode = 1
+	}
+	logrus.Infof("Exiting with %v", exitCode)
+	os.Exit(exitCode)
+}

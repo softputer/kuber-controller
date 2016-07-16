@@ -2,7 +2,7 @@ package haproxy
 
 import (
 	"fmt"
-	"github.com/softputer/kube-controller/config"
+	"github.com/softputer/kuber-controller/config"
 	"io"
 	"os"
 	"os/exec"
@@ -14,17 +14,17 @@ func init() {
 	if config = os.Getenv("HAPROXY_CONFIG"); len(config) == 0 {
 		return
 	}
-	
+
 	haproxyCfg := &haproxyConfig{
-		ReloadCmd: 	"haproxy_reload",
-		Config:		config,
-		Template:	"/etc/haproxy/haproxy_template.cfg"
+		ReloadCmd: "haproxy_reload",
+		Config:    config,
+		Template:  "/etc/haproxy/haproxy_template.cfg",
 	}
-	
+
 	lbp := HAProxyProvider{
 		cfg: haproxyCfg,
 	}
-	
+
 	RegisterProvider(lbp.GetName(), &lbp)
 }
 
@@ -33,10 +33,10 @@ type HAProxyProvider struct {
 }
 
 type haproxyConfig struct {
-	Name		string
-	ReloadCmd	string
-	Config		string
-	Template	string
+	Name      string
+	ReloadCmd string
+	Config    string
+	Template  string
 }
 
 func (cfg *haproxyConfig) write(lbConfig *config.LoadBalancerConfig) (err error) {
@@ -48,7 +48,7 @@ func (cfg *haproxyConfig) write(lbConfig *config.LoadBalancerConfig) (err error)
 	conf := make(map[string]interface{})
 	conf["frontends"] = lbConfig.FrontendServices
 	err = t.Execute(w, conf)
-	reutrn err
+	return err
 }
 
 func (lbc *HAProxyProvider) ApplyConfig(lbConfig *config.LoadBalancerConfig) error {
@@ -66,11 +66,10 @@ func (lbc *HAProxyProvider) GetPublicEndpoint(lbName string) string {
 	return "127.0.0.1"
 }
 
-func (cfg *haproxyConfig) reload error {
-	output, err := exec.Command("sh", "-c", cfg.ReloadCmd).ComninedOutput()
+func (cfg *haproxyConfig) reload() error {
+	output, err := exec.Command("sh", "-c", cfg.ReloadCmd).CombinedOutput()
 	msg := fmt.Sprintf("%v -- %v", cfg.Name, string(output))
 	if err != nil {
 		return fmt.Errorf("error restarting %v: %v", msg, err)
 	}
 }
-

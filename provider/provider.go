@@ -2,8 +2,8 @@ package provider
 
 import (
 	"fmt"
-	"github.com/softputer/kube-controller/config"
-	 utils "github.com/softputer/kube-controller/utils"
+	"github.com/softputer/kuber-controller/config"
+	 utils "github.com/softputer/kuber-controller/utils"
 )
 
 const Localhost = "localhost"

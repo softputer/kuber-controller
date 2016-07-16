@@ -16,10 +16,10 @@ import (
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/controller/framework"
 
-	"github.com/softputer/kube-controller/config"
-	"github.com/softputer/kube-controller/controller"
-	"github.com/softputer/kube-controller/provider"
-	utils "github.com/softputer/kube-controller/utils"
+	"github.com/softputer/kuber-controller/config"
+	"github.com/softputer/kuber-controller/controller"
+	"github.com/softputer/kuber-controller/provider"
+	utils "github.com/softputer/kuber-controller/utils"
 )
 
 var (
