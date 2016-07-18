@@ -5,16 +5,20 @@ import (
 	"reflect"
 	"sync"
 	"time"
+	"os"
+	"io/ioutil"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"io/ioutil"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/controller/framework"
+	"k8s.io/kubernetes/pkg/runtime"
+	"k8s.io/kubernetes/pkg/watch"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 
 	"github.com/softputer/kuber-controller/config"
 	"github.com/softputer/kuber-controller/controller"
@@ -23,7 +27,7 @@ import (
 )
 
 var (
-	flags        = pflag.NewFlagSet("", pflag.ExitError)
+	flags        = pflag.NewFlagSet("", pflag.ExitOnError)
 	resyncPeriod = flags.Duration("sync-period", 30*time.Second,
 		`Relist and confirm cloud resources this often.`)
 )
@@ -31,7 +35,7 @@ var (
 func getSslData(path string) []byte {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Fatalf("", err)
+		logrus.Fatalf("", err)
 	}
 	return b
 }
@@ -50,11 +54,13 @@ func init() {
 	if certdata := os.Getenv("CERT_DATA"); len(certdata) != 0 {
 		config.CertData = getSslData(certdata)
 	}
+
 	if keydata := os.Getenv("KEY_DATA"); len(keydata) != 0 {
 		config.CertData = getSslData(keydata)
 	}
+
 	if cadata := os.Getenv("CA_DATA"); len(cadata) != 0 {
-		config.CertData = getSslData(keydata)
+		config.CertData = getSslData(cadata)
 	}
 
 	kubeClient, err := client.New(config)
@@ -67,6 +73,7 @@ func init() {
 	if err != nil {
 		logrus.Fatal("%v", err)
 	}
+
 	controller.RegisterController(lbc.GetName(), lbc)
 }
 
@@ -77,7 +84,7 @@ type loadBalancerController struct {
 	recorder      record.EventRecorder
 	syncQueue     *utils.TaskQueue
 	stopLock      sync.Mutex
-	shutdowm      bool
+	shutdown      bool
 	stopCh        chan struct{}
 	lbProvider    provider.LBProvider
 }
@@ -88,11 +95,11 @@ func newLoadBalancerController(kubeClient *client.Client, resyncPeriod time.Dura
 	eventBroadcaster.StartRecordingToSink(kubeClient.Events(""))
 	lbc := loadBalancerController{
 		client:   kubeClient,
-		stopChan: make(chan struct{}),
+		stopCh: make(chan struct{}),
 		recorder: eventBroadcaster.NewRecorder(api.EventSource{Component: "loadbalancer-controller"}),
 	}
 
-	lbc.sycQueue = utils.NewTaskQueue(lbc.sync)
+	lbc.syncQueue = utils.NewTaskQueue(lbc.sync)
 
 	svcEventHandler := framework.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -113,19 +120,19 @@ func newLoadBalancerController(kubeClient *client.Client, resyncPeriod time.Dura
 			ListFunc:  serviceListFunc(lbc.client, namespace),
 			WatchFunc: serviceWatchFunc(lbc.client, namespace),
 		},
-		&api.Service{}, resyncPeriod, framework.ResourceEventHandlerFuncs{})
+		&api.Service{}, resyncPeriod, svcEventHandler)
 	return &lbc, nil
 }
 
 func serviceListFunc(c *client.Client, ns string) func(api.ListOptions) (runtime.Object, error) {
-	return func(options api.ListOptions) (rutime.Object, error) {
+	return func(opts api.ListOptions) (runtime.Object, error) {
 		return c.Services(ns).List(opts)
 	}
 }
 
 func serviceWatchFunc(c *client.Client, ns string) func(api.ListOptions) (watch.Interface, error) {
-	return func(opts api.ListOptions) (runtime.Object, error) {
-		return c.Services(ns).Watch(options)
+	return func(opts api.ListOptions) (watch.Interface, error) {
+		return c.Services(ns).Watch(opts)
 	}
 }
 
@@ -142,7 +149,7 @@ func (lbc *loadBalancerController) sync(key string) {
 	requeue := false
 	for _, cfg := range lbc.GetLBConfigs() {
 		if err := lbc.lbProvider.ApplyConfig(cfg); err != nil {
-			logrus.Errorf("Failed to apply lb config on provider: %v".err)
+			logrus.Errorf("Failed to apply lb config on provider: %v", err)
 			requeue = true
 		}
 	}
@@ -165,7 +172,16 @@ func (lbc *loadBalancerController) Run(provider provider.LBProvider) {
 }
 
 func (lbc *loadBalancerController) GetLBConfigs() []*config.LoadBalancerConfig {
-
+	svcs := lbc.svcLister.Store.List()
+	fmt.Println(svcs)
+	lbConfigs := []*config.LoadBalancerConfig{}
+	if len(svcs) == 0 {
+		return lbConfigs
+	}
+	for _, svcIf := range svcs {
+		svc := *svcIf.(*api.Service)
+		fmt.Println(svc)
+	}
 	return lbConfigs
 }
 

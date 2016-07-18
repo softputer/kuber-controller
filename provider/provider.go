@@ -13,7 +13,7 @@ type LBProvider interface {
 	GetName() string
 	GetPublicEndpoints(configName string) []string
 	CleanupConfig(configName string) error
-	Run(syncEndpointsQueue *util.TaskQueue)
+	Run(syncEndpointsQueue *utils.TaskQueue)
 	Stop() error
 	IsHealthy() bool
 }

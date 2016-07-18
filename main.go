@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"	
+	"github.com/Sirupsen/logrus"
 )
 
 var (
@@ -14,7 +15,7 @@ var (
 	lbProviderName = flag.String("lb-provider", "haproxy", "Lb Controller name")
 
 	lbc controller.LBController
-	lbp controller.LBProvider
+	lbp provider.LBProvider
 )
 
 

@@ -29,7 +29,7 @@ func RegisterController(name string, controller LBController) error {
 	if controllers == nil {
 		controllers = make(map[string]LBController)
 	}
-	if _, exists := controllers[name]; exits {
+	if _, exits := controllers[name]; exits {
 		return fmt.Errorf("controller already registered")
 	}
 	controllers[name] = controller

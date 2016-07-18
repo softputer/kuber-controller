@@ -7,16 +7,22 @@ import (
 	"os"
 	"os/exec"
 	"text/template"
+	"github.com/softputer/kuber-controller/provider"
+	"github.com/Sirupsen/logrus"
+	utils "github.com/softputer/kuber-controller/utils"
 )
 
 func init() {
 	var config string
 	if config = os.Getenv("HAPROXY_CONFIG"); len(config) == 0 {
+		logrus.Info("HAPROXY_CONFIG is not provided.")
 		return
+	} else {
+		logrus.Info("HAPROXY_CONFIG is provided.")
 	}
 
 	haproxyCfg := &haproxyConfig{
-		ReloadCmd: "haproxy_reload",
+		ReloadCmd: "/etc/haproxy/haproxy_reload",
 		Config:    config,
 		Template:  "/etc/haproxy/haproxy_template.cfg",
 	}
@@ -25,7 +31,7 @@ func init() {
 		cfg: haproxyCfg,
 	}
 
-	RegisterProvider(lbp.GetName(), &lbp)
+	provider.RegisterProvider(lbp.GetName(), &lbp)
 }
 
 type HAProxyProvider struct {
@@ -45,6 +51,8 @@ func (cfg *haproxyConfig) write(lbConfig *config.LoadBalancerConfig) (err error)
 	if err != nil {
 		return err
 	}
+	var t *template.Template
+	t, err = template.ParseFiles(cfg.Template)
 	conf := make(map[string]interface{})
 	conf["frontends"] = lbConfig.FrontendServices
 	err = t.Execute(w, conf)
@@ -62,8 +70,9 @@ func (lbc *HAProxyProvider) GetName() string {
 	return "haproxy"
 }
 
-func (lbc *HAProxyProvider) GetPublicEndpoint(lbName string) string {
-	return "127.0.0.1"
+func (lbc *HAProxyProvider) GetPublicEndpoints(lbName string) []string {
+	arr := []string{}
+	return arr
 }
 
 func (cfg *haproxyConfig) reload() error {
@@ -72,4 +81,21 @@ func (cfg *haproxyConfig) reload() error {
 	if err != nil {
 		return fmt.Errorf("error restarting %v: %v", msg, err)
 	}
+	return nil
+}
+
+func (lbc *HAProxyProvider) CleanupConfig(name string) error {
+	return nil
+}
+
+func (lbc *HAProxyProvider) Run(syncEndpointsQueue *utils.TaskQueue) {
+        logrus.Infof("shutting down kubernetes-ingress-controller")
+}
+
+func (lbc *HAProxyProvider) IsHealthy() bool {
+        return true
+}
+
+func (lbc *HAProxyProvider) Stop() error {
+	return nil
 }

@@ -53,7 +53,7 @@ func (t *TaskQueue) worker() {
 	}
 }
 
-func (t *TaskQueue) ShutDown() {
+func (t *TaskQueue) Shutdown() {
 	t.queue.ShutDown()
 	<-t.workerDone
 }
