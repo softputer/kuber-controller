@@ -30,6 +30,8 @@ func init() {
 	lbp := HAProxyProvider{
 		cfg: haproxyCfg,
 	}
+	output, _ := exec.Command("sh", "-c", "service", "haproxy", "start").CombinedOutput()
+        fmt.Sprintf("%v", string(output))
 
 	provider.RegisterProvider(lbp.GetName(), &lbp)
 }
