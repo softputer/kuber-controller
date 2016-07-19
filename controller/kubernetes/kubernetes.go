@@ -52,17 +52,12 @@ func init() {
 		ContentConfig: restclient.ContentConfig{GroupVersion: &unversioned.GroupVersion{Version: "v1"}},
 	}
 
-	if certdata := os.Getenv("CERT_DATA"); len(certdata) != 0 {
-		config.CertData = getSslData(certdata)
-	}
-
-	if keydata := os.Getenv("KEY_DATA"); len(keydata) != 0 {
-		config.CertData = getSslData(keydata)
-	}
-
-	if cadata := os.Getenv("CA_DATA"); len(cadata) != 0 {
-		config.CertData = getSslData(cadata)
-	}
+	var certpath string
+        if certpath = os.Getenv("CERT_PATH"); len(certpath) != 0 {
+                config.CertData = getSslData("/home/ssl/admin.pem")
+                config.KeyData = getSslData("/home/ssl/admin-key.pem")
+                config.CAData = getSslData("/home/ssl/ca.pem")
+        }
 
 	kubeClient, err := client.New(config)
 
