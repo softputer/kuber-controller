@@ -8,20 +8,18 @@ const (
 )
 
 type LoadBalancerConfig struct {
-	Name             string
 	Namespace        string
-	FrontendServices *FrontendService
+	FrontendService *FrontendService
 }
 
 type FrontendService struct {
 	Name            string
 	Port            int
-	BackendServices *BackendService
+	BackendService *BackendService
 	Protocol        string
 }
 
 type BackendService struct {
-	Namespace string
 	Name      string
 	Port      int
 	IP        string

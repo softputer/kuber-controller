@@ -7,6 +7,7 @@ import (
 	"time"
 	"os"
 	"io/ioutil"
+	"encoding/json"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/pflag"
@@ -147,11 +148,9 @@ func (lbc *loadBalancerController) sync(key string) {
 	}
 
 	requeue := false
-	for _, cfg := range lbc.GetLBConfigs() {
-		if err := lbc.lbProvider.ApplyConfig(cfg); err != nil {
-			logrus.Errorf("Failed to apply lb config on provider: %v", err)
-			requeue = true
-		}
+	if err := lbc.lbProvider.ApplyConfig(lbc.GetLBConfigs()); err != nil {
+		logrus.Errorf("Failed to apply lb config on provider: %v", err)
+		requeue = true
 	}
 
 	if requeue {
@@ -173,15 +172,53 @@ func (lbc *loadBalancerController) Run(provider provider.LBProvider) {
 
 func (lbc *loadBalancerController) GetLBConfigs() []*config.LoadBalancerConfig {
 	svcs := lbc.svcLister.Store.List()
-	fmt.Println(svcs)
 	lbConfigs := []*config.LoadBalancerConfig{}
 	if len(svcs) == 0 {
 		return lbConfigs
 	}
 	for _, svcIf := range svcs {
 		svc := *svcIf.(*api.Service)
-		fmt.Println(svc)
+		annotations := svc.Annotations
+		if len(annotations) == 0 {
+			continue
+		}
+		svcIp := svc.Spec.ClusterIP
+		svcName := svc.Name
+		network := annotations["network"]
+		var parsed []map[string]interface{}
+		data := []byte(network)
+		err := json.Unmarshal(data, &parsed)
+		if err != nil {
+			return lbConfigs
+		}
+		fmt.Println(svcIp)
+		fmt.Println(svcName)
+		fmt.Println(parsed)
+		for _, item := range parsed {
+			//fmt.Println(reflect.TypeOf(item["lb_port"]))
+			//fmt.Println(reflect.TypeOf(item["container_port"]))
+			//fmt.Println(reflect.TypeOf(item["protocol"]))
+			//fmt.Println(reflect.TypeOf(item["ip"]))
+		        backendService := &config.BackendService{
+				Name:   svcIp,
+				Port:	int(item["container_port"].(float64)),
+				IP:	svcIp,
+			}	
+
+			frontendService := &config.FrontendService{
+				Name:	fmt.Sprintf("%v_%v", svcName, item["container_port"]),	
+				Port:   int(item["lb_port"].(float64)),
+				BackendService:	backendService,
+				Protocol: item["protocol"].(string),
+			}
+			lbConfig := &config.LoadBalancerConfig{
+				Namespace: svc.Namespace,
+				FrontendService: frontendService,
+			}
+			lbConfigs = append(lbConfigs, lbConfig)
+		}
 	}
+	fmt.Println(lbConfigs)
 	return lbConfigs
 }
 

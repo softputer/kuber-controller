@@ -45,7 +45,7 @@ type haproxyConfig struct {
 	Template  string
 }
 
-func (cfg *haproxyConfig) write(lbConfig *config.LoadBalancerConfig) (err error) {
+func (cfg *haproxyConfig) write(lbConfig []*config.LoadBalancerConfig) (err error) {
 	var w io.Writer
 	w, err = os.Create(cfg.Config)
 	if err != nil {
@@ -54,12 +54,12 @@ func (cfg *haproxyConfig) write(lbConfig *config.LoadBalancerConfig) (err error)
 	var t *template.Template
 	t, err = template.ParseFiles(cfg.Template)
 	conf := make(map[string]interface{})
-	conf["frontends"] = lbConfig.FrontendServices
+	conf["lbconfigs"] = lbConfig
 	err = t.Execute(w, conf)
 	return err
 }
 
-func (lbc *HAProxyProvider) ApplyConfig(lbConfig *config.LoadBalancerConfig) error {
+func (lbc *HAProxyProvider) ApplyConfig(lbConfig []*config.LoadBalancerConfig) error {
 	if err := lbc.cfg.write(lbConfig); err != nil {
 		return err
 	}
