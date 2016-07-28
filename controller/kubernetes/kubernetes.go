@@ -176,6 +176,7 @@ func (lbc *loadBalancerController) GetLBConfigs() []*config.LoadBalancerConfig {
 		annotations := svc.Annotations
 		if _, ok := annotations["network"]; !ok {
 			continue
+			fmt.Println(svc.Name, "cannot be routed")
 		}
 		svcIp := svc.Spec.ClusterIP
 		svcName := svc.Name
@@ -196,12 +197,12 @@ func (lbc *loadBalancerController) GetLBConfigs() []*config.LoadBalancerConfig {
 			//fmt.Println(reflect.TypeOf(item["ip"]))
 		        backendService := &config.BackendService{
 				Name:   svcIp,
-				Port:	int(item["container_port"].(float64)),
+				Port:	int(item["service_port"].(float64)),
 				IP:	svcIp,
 			}	
 
 			frontendService := &config.FrontendService{
-				Name:	fmt.Sprintf("%v_%v", svcName, item["container_port"]),	
+				Name:	fmt.Sprintf("%v_%v", svcName, item["service_port"]),	
 				Port:   int(item["lb_port"].(float64)),
 				BackendService:	backendService,
 				Protocol: item["protocol"].(string),
