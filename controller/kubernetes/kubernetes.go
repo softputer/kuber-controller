@@ -174,7 +174,7 @@ func (lbc *loadBalancerController) GetLBConfigs() []*config.LoadBalancerConfig {
 	for _, svcIf := range svcs {
 		svc := *svcIf.(*api.Service)
 		annotations := svc.Annotations
-		if len(annotations) == 0 {
+		if _, ok := annotations["network"]; !ok {
 			continue
 		}
 		svcIp := svc.Spec.ClusterIP
