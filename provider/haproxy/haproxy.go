@@ -56,9 +56,22 @@ func (cfg *haproxyConfig) write(lbConfig []*config.LoadBalancerConfig) (err erro
 	var t *template.Template
 	t, err = template.ParseFiles(cfg.Template)
 	conf := make(map[string]interface{})
+	lbConfig = cfg.removeDuplicatePort(lbConfig)
 	conf["lbconfigs"] = lbConfig
 	err = t.Execute(w, conf)
 	return err
+}
+
+func (cfg *haproxyConfig) removeDuplicatePort(lbConfig []*config.LoadBalancerConfig) (tailoredConfig []*config.LoadBalancerConfig) {
+	m := make(map[int]int)
+	for _, config := range lbConfig {
+		port := config.FrontendService.Port
+		if m[port] == 0 {
+			tailoredConfig = append(tailoredConfig, config)
+			m[port] = port
+		}
+	}	
+	return tailoredConfig
 }
 
 func (lbc *HAProxyProvider) ApplyConfig(lbConfig []*config.LoadBalancerConfig) error {
