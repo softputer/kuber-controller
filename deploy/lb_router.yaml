@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: router
+  labels:
+    name: router
+    app: router
+spec:
+  replicas: 1
+  selector:
+    name: router
+  template:
+    metadata:
+      labels:
+        name: router
+        app: router
+    spec:
+      nodeName: 192.168.1.205
+      hostNetwork: true
+      imagePullSecrets:
+      - name: hubregistrysecret
+      containers:
+      - name: router-controller
+        image: hub.qingyuanos.com/admin/kuber-controller:haproxy
+        env:
+        - name: KUBERNETES_URL
+          value: https://10.0.0.97:443
+        - name:  HAPROXY_CONFIG
+          value: /etc/haproxy/haproxy.cfg
+        - name: CERT_PATH
+          value: /home/ssl
+        volumeMounts:
+        - mountPath: /home/ssl
+          name: cert
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+      volumes:
+      - name: cert
+        hostPath:
+          path: /home/centos/ssl
+      restartPolicy: Always
