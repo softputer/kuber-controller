@@ -2,7 +2,7 @@
 
 #### Intrduction
 
-This repo is delighted by Rancher's ingress-controller which uses k8s ingress to implement Layer 7 loadbalancer. But in the real world, maybe we don't have third-party loadbalancer support. So we have to implement our own loadbalancer.
+This repo is inspired by Rancher's ingress-controller which uses k8s ingress to implement Layer 7 loadbalancer. But in the real world, maybe we don't have third-party loadbalancer support. So we have to implement our own loadbalancer.
 
 
 
